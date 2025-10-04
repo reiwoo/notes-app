@@ -4,10 +4,31 @@
     <meta charset="UTF-8">
     <title>Notes App</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        input, textarea { display: block; margin-bottom: 10px; width: 300px; }
-        button { margin-bottom: 20px; }
-        .note { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        h1, h2 { color: #333; }
+        input, textarea { display: block; margin-bottom: 10px; width: 300px; padding: 5px; }
+        button { margin-bottom: 20px; padding: 5px 10px; cursor: pointer; }
+        .note { 
+            border: 1px solid #ccc; 
+            padding: 15px; 
+            margin-bottom: 10px; 
+            background: #fff; 
+            border-radius: 8px;
+            position: relative;
+        }
+        .note input, .note textarea { width: 90%; margin-bottom: 5px; }
+        .buttons { margin-top: 5px; }
+        .notification {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #4caf50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: none;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -20,6 +41,8 @@
 
     <h2>Notes</h2>
     <div id="notes"></div>
+
+    <div class="notification" id="notification"></div>
 
     <script src="script.js"></script>
 </body>
