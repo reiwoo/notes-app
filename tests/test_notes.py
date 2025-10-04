@@ -1,6 +1,9 @@
 import pytest
-from notes_app.app import app as flask_app   # вместо from app import app
-from notes_app.models import db, Note
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from app import app as flask_app
+from models import db, Note
 
 @pytest.fixture
 def client():
