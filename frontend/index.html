@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Notes App</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        input, textarea { display: block; margin-bottom: 10px; width: 300px; }
+        button { margin-bottom: 20px; }
+        .note { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Notes App</h1>
+
+    <h2>Create Note</h2>
+    <input type="text" id="title" placeholder="Title">
+    <textarea id="content" placeholder="Content"></textarea>
+    <button onclick="createNote()">Create</button>
+
+    <h2>Notes</h2>
+    <div id="notes"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>

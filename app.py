@@ -3,8 +3,10 @@ from models import db, Note
 from flask_migrate import Migrate
 from schemas import ma, note_schema, notes_schema
 import config
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app) 
 app.config.from_object(config)
 db.init_app(app)
 migrate = Migrate(app, db)
