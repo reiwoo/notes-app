@@ -48,32 +48,25 @@ def get_note(note_id):
 # ---------------- CREATE NOTE ----------------
 @app.route('/notes', methods=['POST'])
 def create_note():
-    data = request.get_json() or {}
-    errors = note_schema.validate(data)
-    if errors:
-        return jsonify({"errors": errors}), 400
-
-    note = note_schema.load(data)  # создаёт объект Note автоматически
+    data = request.json
+    note = Note(title=data.get('title'), content=data.get('content', ''), status=data.get('status', 'todo'))
     db.session.add(note)
     db.session.commit()
-    return note_schema.jsonify(note), 201
+    return jsonify({'id': note.id, 'title': note.title, 'content': note.content, 'status': note.status}), 201
 
 # ---------------- UPDATE NOTE ----------------
-@app.route('/notes/<int:note_id>', methods=['PUT', 'PATCH'])
+@app.route('/notes/<int:note_id>', methods=['PATCH'])
 def update_note(note_id):
     note = Note.query.get_or_404(note_id)
     data = request.get_json() or {}
-    errors = note_schema.validate(data, partial=True)  # partial=True для PATCH
-    if errors:
-        return jsonify({"errors": errors}), 400
-
-    if "title" in data:
-        note.title = data["title"]
-    if "content" in data:
-        note.content = data["content"]
-
+    if 'title' in data:
+        note.title = data['title']
+    if 'content' in data:
+        note.content = data['content']
+    if 'status' in data:
+        note.status = data['status']
     db.session.commit()
-    return note_schema.jsonify(note)
+    return jsonify(note.to_dict())
 
 # ---------------- DELETE NOTE ----------------
 @app.route('/notes/<int:note_id>', methods=['DELETE'])
@@ -82,6 +75,17 @@ def delete_note(note_id):
     db.session.delete(note)
     db.session.commit()
     return jsonify({"message": "Note deleted"}), 200
+
+# ---------------- Status NOTE ----------------
+@app.route('/notes/<int:note_id>/status', methods=['PATCH'])
+def update_note_status(note_id):
+    note = Note.query.get_or_404(note_id)
+    data = request.get_json() or {}
+    if 'status' in data and data['status'] in ['todo', 'doing', 'complete']:
+        note.status = data['status']
+        db.session.commit()
+        return jsonify(note.to_dict())
+    return jsonify({"error": "invalid status"}), 400
 
 # ---------------- RUN ----------------
 if __name__ == '__main__':

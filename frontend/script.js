@@ -1,80 +1,179 @@
-const API_URL = "http://127.0.0.1:5000/notes";
+const API_URL = 'http://127.0.0.1:5000/notes';  // Укажите ваш backend URL
 
-function showNotification(message, color = "#4caf50") {
-    const notif = document.getElementById("notification");
-    notif.style.background = color;
-    notif.textContent = message;
-    notif.style.display = "block";
-    setTimeout(() => notif.style.display = "none", 2000);
-}
+document.addEventListener('DOMContentLoaded', () => {
+    const newBtn = document.getElementById('newBtn');
+    const notifyEl = document.getElementById('notify');
+    const notifyBody = document.getElementById('notify-body');
+    const modalEl = document.getElementById('noteModal');
+    const bsModal = new bootstrap.Modal(modalEl);
+    const modalTitle = document.getElementById('modal-title');
+    const modalContent = document.getElementById('modal-content');
+    const modalStatus = document.getElementById('modal-status');
+    const saveBtn = document.getElementById('saveBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
 
-// Получить все заметки
-async function getNotes() {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-    const notesDiv = document.getElementById("notes");
-    notesDiv.innerHTML = "";
+    let currentNoteId = null;  // Для редактирования/удаления
 
-    data.notes.forEach(note => {
-        const noteDiv = document.createElement("div");
-        noteDiv.className = "note";
-        noteDiv.innerHTML = `
-            <input type="text" value="${note.title}" id="title-${note.id}">
-            <textarea id="content-${note.id}">${note.content}</textarea>
-            <div class="buttons">
-                <button onclick="updateNote(${note.id})">Save</button>
-                <button onclick="deleteNote(${note.id})">Delete</button>
+    // Уведомления
+    function showNotify(msg, type = 'success') {
+        notifyEl.className = `alert alert-${type} alert-dismissible fade show`;
+        notifyBody.textContent = msg;
+        notifyEl.style.display = 'block';
+        setTimeout(() => notifyEl.style.display = 'none', 3000);
+    }
+
+    // Создание карточки
+    function createCard(note) {
+        const card = document.createElement('div');
+        card.className = 'card card-kanban';
+        card.id = `note-${note.id}`;
+        card.draggable = true;
+        card.dataset.id = note.id;
+        card.dataset.status = note.status;
+        card.innerHTML = `
+            <div class="card-body">
+                <h6 class="card-title">${note.title}</h6>
+                <p class="card-text text-muted">${note.content || ''}</p>
             </div>
         `;
-        notesDiv.appendChild(noteDiv);
-    });
-}
 
-// Создать заметку
-async function createNote() {
-    const title = document.getElementById("title").value;
-    const content = document.getElementById("content").value;
+        // Drag events
+        card.addEventListener('dragstart', (e) => {
+            card.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', note.id);
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
 
-    if (!title) {
-        showNotification("Title is required!", "#f44336");
-        return;
+        // Клик для редактирования
+        card.addEventListener('click', () => openModal(note.id, note.title, note.content, note.status));
+
+        return card;
     }
 
-    await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content })
-    });
-
-    document.getElementById("title").value = "";
-    document.getElementById("content").value = "";
-    showNotification("Note created!");
-    getNotes();
-}
-
-// Обновить заметку
-async function updateNote(id) {
-    const newTitle = document.getElementById(`title-${id}`).value;
-    const newContent = document.getElementById(`content-${id}`).value;
-
-    await fetch(`${API_URL}/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newTitle, content: newContent })
-    });
-
-    showNotification("Note updated!");
-    getNotes();
-}
-
-// Удалить заметку
-async function deleteNote(id) {
-    if (confirm("Delete this note?")) {
-        await fetch(`${API_URL}/${id}`, { method: "DELETE" });
-        showNotification("Note deleted!", "#f44336");
-        getNotes();
+    // Открытие модалки
+    function openModal(id = null, title = '', content = '', status = 'todo') {
+        currentNoteId = id;
+        modalTitle.value = title;
+        modalContent.value = content;
+        modalStatus.textContent = status;
+        modalEl.querySelector('.modal-title').textContent = id ? 'Edit Note' : 'Create Note';
+        deleteBtn.style.display = id ? 'block' : 'none';  // Скрыть delete для новых
+        bsModal.show();
     }
-}
 
-// Инициализация
-getNotes();
+    // Загрузка заметок
+    async function loadNotes() {
+        try {
+            const res = await fetch(API_URL);
+            if (!res.ok) throw new Error('Load failed');
+            const data = await res.json();
+            ['todo', 'doing', 'complete'].forEach(status => {
+                document.getElementById(status).innerHTML = '<h4 class="text-center">' + status.charAt(0).toUpperCase() + status.slice(1) + '</h4>';
+            });
+            data.notes.forEach(note => {
+                const col = document.getElementById(note.status || 'todo');
+                col.appendChild(createCard(note));
+            });
+            attachDroppables();
+        } catch (err) {
+            showNotify('Error loading notes', 'danger');
+        }
+    }
+
+    // Drag-and-drop handlers
+    function attachDroppables() {
+        document.querySelectorAll('.droppable').forEach(col => {
+            col.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                col.classList.add('droppable-hover');
+            });
+            col.addEventListener('dragleave', () => col.classList.remove('droppable-hover'));
+            col.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                col.classList.remove('droppable-hover');
+                const noteId = e.dataTransfer.getData('text/plain');
+                const newStatus = col.dataset.status;
+                const card = document.getElementById(`note-${noteId}`);
+                if (card) {
+                    col.appendChild(card);  // Локальное перемещение
+                    card.dataset.status = newStatus;
+                }
+                try {
+                    const res = await fetch(`${API_URL}/${noteId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                    if (!res.ok) throw new Error('Move failed');
+                    showNotify('Note moved');
+                } catch (err) {
+                    showNotify('Error moving note', 'danger');
+                    loadNotes();  // Синхронизация на ошибке
+                }
+            });
+        });
+    }
+
+    // Создание новой
+    newBtn.addEventListener('click', () => openModal());
+
+    // Сохранение (create/update)
+    saveBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const title = modalTitle.value.trim();
+        const content = modalContent.value.trim();
+        if (!title) return showNotify('Title required', 'warning');
+        const body = { title, content };
+        try {
+            let res;
+            if (currentNoteId) {
+                res = await fetch(`${API_URL}/${currentNoteId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            } else {
+                body.status = 'todo';
+                res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+            }
+            if (!res.ok) throw new Error('Save failed');
+            const note = await res.json();
+            const card = document.getElementById(`note-${note.id}`);
+            if (card) {
+                // Update existing
+                card.querySelector('.card-title').textContent = note.title;
+                card.querySelector('.card-text').textContent = note.content;
+            } else {
+                // Add new
+                document.getElementById('todo').appendChild(createCard(note));
+            }
+            showNotify('Note saved');
+            bsModal.hide();
+        } catch (err) {
+            showNotify('Error saving note', 'danger');
+        }
+    });
+
+    // Удаление
+    deleteBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        if (!confirm('Delete this note?')) return;
+        try {
+            const res = await fetch(`${API_URL}/${currentNoteId}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Delete failed');
+            const card = document.getElementById(`note-${currentNoteId}`);
+            if (card) card.remove();
+            showNotify('Note deleted');
+            bsModal.hide();
+        } catch (err) {
+            showNotify('Error deleting note', 'danger');
+        }
+    });
+
+    // Инициализация
+    loadNotes();
+});
