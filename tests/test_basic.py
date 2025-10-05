@@ -1,7 +1,6 @@
 import sys
 import os
 
-# Добавляем корневую директорию в PYTHONPATH
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_imports():
@@ -9,7 +8,7 @@ def test_imports():
     try:
         from app import app, get_db_connection, init_db
         assert app is not None
-        print("✅ Все модули импортированы успешно")
+        print("Все модули импортированы успешно")
     except Exception as e:
         import pytest
         pytest.fail(f"Ошибка импорта: {e}")
@@ -19,7 +18,7 @@ def test_app_creation():
     from app import app
     assert app.name == 'app'
     assert hasattr(app, 'route')
-    print("✅ Приложение создано корректно")
+    print("Приложение создано корректно")
 
 def test_escape_html():
     """Тест функции escape_html"""
@@ -32,4 +31,4 @@ def test_escape_html():
     assert escape_html('"test"') == "&quot;test&quot;"
     assert escape_html("'test'") == "&#39;test&#39;"
     assert escape_html("a & b") == "a &amp; b"
-    print("✅ Функция escape_html работает корректно")
+    print("Функция escape_html работает корректно")

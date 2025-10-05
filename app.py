@@ -33,7 +33,6 @@ def setup_logging():
         '%(asctime)s - %(levelname)s - [%(ip)s] - %(message)s'
     )
     
-    # Файловый handler с ротацией (макс 5MB, 5 бэкапов)
     file_handler = RotatingFileHandler(
         'logs/app.log', 
         maxBytes=5*1024*1024, 
@@ -43,7 +42,6 @@ def setup_logging():
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.INFO)
     
-    # Добавляем handler к логгеру приложения
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
 
@@ -93,7 +91,7 @@ def get_user_agent_info():
     }
 
 def log_action(action, note_id=None, details=None):
-    """Логируем действие с заметкой"""
+    """Логируем действие и сохраняем в базу данных"""
     ip = get_client_ip()
     user_agent_info = get_user_agent_info()
     
@@ -109,12 +107,50 @@ def log_action(action, note_id=None, details=None):
         'method': request.method
     }
     
-    # Логируем в файл
-    app.logger.info(json.dumps(log_data, ensure_ascii=False))
+    # 1. Логируем в stdout (для Render)
+    log_message = f"{action} | IP: {ip} | Device: {user_agent_info['device']}"
+    if note_id:
+        log_message += f" | Note: {note_id}"
+    app.logger.info(log_message)
     
-    # Также выводим в консоль для удобства
-    print(f"📝 LOG: {action} - IP: {ip} - Device: {user_agent_info['device']} - Note: {note_id}")
-
+    # 2. Сохраняем в базу данных (для постоянного хранения)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS logs (
+                id SERIAL PRIMARY KEY,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                ip VARCHAR(45),
+                action VARCHAR(100),
+                note_id INTEGER,
+                device VARCHAR(50),
+                browser VARCHAR(50),
+                details JSONB,
+                endpoint VARCHAR(100),
+                method VARCHAR(10)
+            )
+        ''')
+        
+        cur.execute('''
+            INSERT INTO logs (ip, action, note_id, device, browser, details, endpoint, method)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            ip, action, note_id, 
+            user_agent_info['device'], 
+            user_agent_info['browser'],
+            json.dumps(details) if details else None,
+            request.endpoint,
+            request.method
+        ))
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+    except Exception as e:
+        print(f"❌ Ошибка сохранения лога в БД: {e}")
 # Функция для подключения к базе данных
 def get_db_connection():
     # Для Render и продакшена
@@ -387,9 +423,7 @@ def delete_note(note_id):
 
 @app.route('/logs', methods=['GET'])
 def get_logs():
-    """Эндпоинт для просмотра логов (только для админов)"""
     try:
-        # Простая защита - можно добавать проверку IP или токен
         password = request.args.get('password')
         if password != 'admin123':  # простой пароль для демо
             return jsonify({'error': 'Unauthorized'}), 401

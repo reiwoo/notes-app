@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCreateButton();
   setupModalButtons();
   setupColumns();
-  loadNotes(); // Загружаем заметки с сервера
+  loadNotes(); 
 
   // ---------- Global Drag Protection ----------
   function setupGlobalDragHandlers() {
@@ -57,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setupModalButtons() {
-    // Save (create or update)
     modalSaveBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       const title = modalTitleEl.value.trim();
@@ -190,7 +189,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           const id = String(rawId);
 
-          // Оптимистичное обновление
           const noteIndex = notes.findIndex(n => String(n.id) === id);
           if (noteIndex === -1) {
             console.warn('Note not found in state:', id);
@@ -200,7 +198,6 @@ document.addEventListener('DOMContentLoaded', () => {
           const oldStatus = notes[noteIndex].status;
           const newStatus = targetCol.id;
           
-          // Если статус не изменился - выходим
           if (oldStatus === newStatus) {
             console.log('Status unchanged, skipping update');
             return;
@@ -208,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
           notes[noteIndex].status = newStatus;
           
-          // Обновляем DOM
           const el = document.querySelector(`.note[data-id='${id}']`) || document.getElementById(`note-${id}`);
           if (el && targetCol) {
             targetCol.appendChild(el);
@@ -216,7 +212,6 @@ document.addEventListener('DOMContentLoaded', () => {
             updateCounts();
           }
 
-          // Обновляем на сервере
           const res = await fetch(`${API_URL}/${id}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
