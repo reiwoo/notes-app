@@ -1,12 +1,9 @@
 // main.js — server-based version for deployment
 document.addEventListener('DOMContentLoaded', () => {
   // ---------- CONFIG ----------
-  // Для разработки с локальным сервером
-  const API_BASE = 'http://127.0.0.1:5000';
-  // Для продакшена на Render (замените на ваш URL)
-  // const API_BASE = 'https://your-app-name.onrender.com';
-
-  const API_URL = `${API_BASE}/notes`;
+  // Для Render: фронтенд и бэкенд на одном домене, используем относительные пути
+  const API_BASE = ''; // Пустая строка - запросы идут на тот же домен
+  const API_URL = '/notes'; // Относительный путь к API
 
   // ---------- STATE ----------
   let notes = [];

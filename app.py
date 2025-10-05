@@ -1,7 +1,7 @@
 import os
 import sys
 import psycopg2
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from datetime import datetime
 import urllib.parse
@@ -11,6 +11,11 @@ import json
 
 app = Flask(__name__)
 CORS(app)
+
+@app.route('/')
+def index():
+    """Главная страница с фронтендом"""
+    return render_template('index.html')
 
 TESTING = os.environ.get('TESTING') == 'True'
 
@@ -112,28 +117,9 @@ def log_action(action, note_id=None, details=None):
 
 # Функция для подключения к базе данных
 def get_db_connection():
-    # Если в режиме тестирования - используем SQLite в памяти
-    if TESTING:
-        import sqlite3
-        conn = sqlite3.connect(':memory:')
-        conn.row_factory = sqlite3.Row
-        
-        # Создаем таблицу если не существует
-        cursor = conn.cursor()
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                content TEXT,
-                status TEXT DEFAULT 'todo',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ''')
-        conn.commit()
-        return conn
-    
-    # Оригинальная логика для продакшена/разработки
+    # Для Render и продакшена
     if 'DATABASE_URL' in os.environ:
+        import urllib.parse
         urllib.parse.uses_netloc.append('postgres')
         url = urllib.parse.urlparse(os.environ['DATABASE_URL'])
         
@@ -144,15 +130,25 @@ def get_db_connection():
             host=url.hostname,
             port=url.port
         )
-    else:
+        return conn
+    
+    # Для локальной разработки
+    try:
         conn = psycopg2.connect(
             host='localhost',
             database='notes_app',
             user='postgres',
-            password='ваш_пароль',
+            password='',  # замените на ваш пароль
             port=5433
         )
-    return conn
+        return conn
+    except Exception as e:
+        print(f"Ошибка подключения к локальной БД: {e}")
+        # Fallback: создаем SQLite базу
+        import sqlite3
+        conn = sqlite3.connect('notes.db')
+        conn.row_factory = sqlite3.Row
+        return conn
 
 # Инициализация базы данных
 def init_db():
